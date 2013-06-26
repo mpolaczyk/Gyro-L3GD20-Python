@@ -43,13 +43,13 @@ def GetValueUnderMask(currentValue, mask):
         i += 1
     return currentValueCleared >> i
 
-def TwosComplementToByte(self, value):
+def TwosComplementToByte(value):
     if value >= 0 and value <= 127:
         return value
     else:
         return value - 256
     
-def TwosComplementToCustom(self, value, signBitPosition):
+def TwosComplementToCustom(value, signBitPosition):
     if value >= 0 and value <= (1<<signBitPosition)-1:
         return value
     else:

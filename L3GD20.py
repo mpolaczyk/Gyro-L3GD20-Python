@@ -25,10 +25,8 @@ class L3GD20(object):
         current = self.__i2c.read_byte_data(self.__slave, register)  # Get current value
         new = bitOps.SetValueUnderMask(value, current, mask)
         if self.__ifLog:
-            print('log')
             self.__log(register, mask, current, new)
         if  not self.__ifWriteBlock:
-            print('write')
             self.__i2c.write_byte_data(self.__slave, register, new)
         
     def __readFromRegister(self, register, mask):
@@ -310,7 +308,7 @@ class L3GD20(object):
     def Set_AxisZ_Enabled(self, enabled):
         self.__writeToRegisterWithDictionaryCheck(self.__REG_RW_CTRL_REG1, self.__MASK_CTRL_REG1_Zen, enabled, self.__EnabledDict, 'EnabledEnum')   
     def Get_AxisZ_Enabled(self):
-        """Axis X enabled."""
+        """Axis Z enabled."""
         return self.__readFromRegisterWithDictionaryMatch(self.__REG_RW_CTRL_REG1, self.__MASK_CTRL_REG1_Zen, self.__EnabledDict)
     
     def Set_PowerMode(self, mode):
@@ -508,7 +506,7 @@ class L3GD20(object):
         return self.__readFromRegister(self.__REG_R_OUT_TEMP, 0xff)
     
     def Get_AxisOverrun_Value(self):
-        """Z, Y, X axis overrun"""
+        """(X, Y, Z) axis overrun"""
         zor = 0
         yor = 0
         xor = 0
@@ -516,10 +514,10 @@ class L3GD20(object):
             zor = self.__readFromRegister(self.__REG_R_STATUS_REG, self.__MASK_STATUS_REG_ZOR)
             yor = self.__readFromRegister(self.__REG_R_STATUS_REG, self.__MASK_STATUS_REG_YOR)
             xor = self.__readFromRegister(self.__REG_R_STATUS_REG, self.__MASK_STATUS_REG_XOR)
-        return (zor, yor, xor)
+        return (xor, yor, zor)
     
     def Get_AxisDataAvailable_Value(self):
-        """Z, Y, X data available"""
+        """(X, Y, Z) data available"""
         zda = 0
         yda = 0
         xda = 0
@@ -527,7 +525,7 @@ class L3GD20(object):
             zda = self.__readFromRegister(self.__REG_R_STATUS_REG, self.__MASK_STATUS_REG_ZDA)
             yda = self.__readFromRegister(self.__REG_R_STATUS_REG, self.__MASK_STATUS_REG_YDA)
             xda = self.__readFromRegister(self.__REG_R_STATUS_REG, self.__MASK_STATUS_REG_XDA)
-        return (zda, yda, xda)
+        return (xda, yda, zda)
     
     def Get_OutX_Value(self):
         """X angular data"""
