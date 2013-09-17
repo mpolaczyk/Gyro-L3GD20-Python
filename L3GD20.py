@@ -2,6 +2,8 @@
 
 from smbus import SMBus
 import bitOps
+import numpy
+import time
 
 class L3GD20(object):
     
@@ -10,6 +12,7 @@ class L3GD20(object):
         self.__slave = slaveAddr
         self.__ifWriteBlock = ifWriteBlock
         self.__ifLog = ifLog
+        self.__x0 = 0
         
     def __del__(self):
         del(self.__i2c)
@@ -74,8 +77,8 @@ class L3GD20(object):
     __REG_RW_INT1_THS_ZL        = 0x37      # Interrupt 1 threshold level Z LSB register
     __REG_RW_INT1_DURATION      = 0x38      # Interrupt 1 duration register
     
-    __MASK_CTRL_REG1_Yen        = 0x01      # Y enable
-    __MASK_CTRL_REG1_Xen        = 0x02      # X enable
+    __MASK_CTRL_REG1_Xen        = 0x01      # X enable
+    __MASK_CTRL_REG1_Yen        = 0x02      # Y enable
     __MASK_CTRL_REG1_Zen        = 0x04      # Z enable
     __MASK_CTRL_REG1_PD         = 0x08      # Power-down
     __MASK_CTRL_REG1_BW         = 0x30      # Bandwidth
@@ -103,10 +106,10 @@ class L3GD20(object):
     __MASK_STATUS_REG_ZOR       = 0x40      # Z axis overrun
     __MASK_STATUS_REG_YOR       = 0x20      # Y axis overrun
     __MASK_STATUS_REG_XOR       = 0x10      # X axis overrun
-    __MASK_STATUS_REG_ZYXDA     = 0x80      # Z, Y, X data available
-    __MASK_STATUS_REG_ZDA       = 0x40      # Z data available
-    __MASK_STATUS_REG_YDA       = 0x20      # Y data available
-    __MASK_STATUS_REG_XDA       = 0x10      # X data available
+    __MASK_STATUS_REG_ZYXDA     = 0x08      # Z, Y, X data available
+    __MASK_STATUS_REG_ZDA       = 0x04      # Z data available
+    __MASK_STATUS_REG_YDA       = 0x02      # Y data available
+    __MASK_STATUS_REG_XDA       = 0x01      # X data available
     __MASK_FIFO_CTRL_REG_FM     = 0xe0      # Fifo mode selection
     __MASK_FIFO_CTRL_REG_WTM    = 0x1f      # Fifo treshold - watermark level
     __MASK_FIFO_SRC_REG_FSS     = 0x1f      # Fifo stored data level
@@ -212,6 +215,79 @@ class L3GD20(object):
         HighPassFilterModes[3]:0x3
     }
     
+    # For calibration purposes
+    meanX = 0
+    maxX = 0
+    minX = 0
+    meanY = 0
+    maxY = 0
+    minY = 0
+    meanZ = 0
+    maxZ = 0
+    minZ = 0
+    
+    gain = 1
+    
+    
+    def Init(self):
+        """Call this method after configuratin and before doing measurements"""
+        print("Initiating...")
+        if (self.Get_FullScale_Value() == self.FullScaleEnum[0]):
+            self.gain = 0.00875
+        elif (self.Get_FullScale_Value() == self.FullScaleEnum[1]):
+            self.gain = 0.0175
+        elif (self.Get_FullScale_Value() == self.FullScaleEnum[2]):
+            self.gain = 0.07
+        print("Gain set to:{0}".format(self.gain))
+
+
+    def CalibrateX(self):
+        """Returns (min, mean, max)"""
+        print("Calibrating axis X, please do not move sensor...")
+        buff = []
+        for t in range(20):
+            while self.Get_AxisDataAvailable_Value()[0] == 0:
+                time.sleep(0.0001)
+            buff.append(self.Get_RawOutX_Value())
+        print(buff)
+        self.meanX = numpy.mean(buff) 
+        self.maxX = max(buff)
+        self.minX = min(buff)
+        print("Done: (min={0};mean={1};max={2})".format(self.minX, self.meanX, self.maxX))
+        
+    def CalibrateY(self):
+        """Returns (min, mean, max)"""
+        print("Calibrating axis Y, please do not move sensor...")
+        buff = []
+        for t in range(20):
+            while self.Get_AxisDataAvailable_Value()[1] == 0:
+                time.sleep(0.0001)
+            buff.append(self.Get_RawOutY_Value())
+        print(buff)
+        self.meanY = numpy.mean(buff) 
+        self.maxY = max(buff)
+        self.minY = min(buff)
+        print("Done: (min={0};mean={1};max={2})".format(self.minY, self.meanY, self.maxY))
+        
+    def CalibrateZ(self):
+        """Returns (min, mean, max)"""
+        print("Calibrating axis Z, please do not move sensor...")
+        buff = []
+        for t in range(20):
+            while self.Get_AxisDataAvailable_Value()[2] == 0:
+                time.sleep(0.0001)
+            buff.append(self.Get_RawOutZ_Value())
+        print(buff)
+        self.meanZ = numpy.mean(buff) 
+        self.maxZ = max(buff)
+        self.minZ = min(buff)
+        print("Done: (min={0};mean={1};max={2})".format(self.minZ, self.meanZ, self.maxZ))
+
+    def Calibrate(self):
+		self.CalibrateX()
+		self.CalibrateY()
+		self.CalibrateZ()
+            
     def ReturnConfiguration(self):
         return  [
             [ self.Get_DeviceId_Value.__doc__, self.Get_DeviceId_Value()],
@@ -302,7 +378,7 @@ class L3GD20(object):
     def Set_AxisY_Enabled(self, enabled):
         self.__writeToRegisterWithDictionaryCheck(self.__REG_RW_CTRL_REG1, self.__MASK_CTRL_REG1_Yen, enabled, self.__EnabledDict, 'EnabledEnum')
     def Get_AxisY_Enabled(self):
-        """Axis Z enabled."""
+        """Axis Y enabled."""
         return self.__readFromRegisterWithDictionaryMatch(self.__REG_RW_CTRL_REG1, self.__MASK_CTRL_REG1_Yen, self.__EnabledDict)
             
     def Set_AxisZ_Enabled(self, enabled):
@@ -521,36 +597,75 @@ class L3GD20(object):
         zda = 0
         yda = 0
         xda = 0
-        if self.__readFromRegister(self.__REG_R_STATUS_REG, self.__MASK_STATUS_REG_ZYXOR) == 0x01:
+        if self.__readFromRegister(self.__REG_R_STATUS_REG, self.__MASK_STATUS_REG_ZYXDA) == 0x01:
             zda = self.__readFromRegister(self.__REG_R_STATUS_REG, self.__MASK_STATUS_REG_ZDA)
             yda = self.__readFromRegister(self.__REG_R_STATUS_REG, self.__MASK_STATUS_REG_YDA)
             xda = self.__readFromRegister(self.__REG_R_STATUS_REG, self.__MASK_STATUS_REG_XDA)
         return (xda, yda, zda)
     
-    def Get_OutX_Value(self):
-        """X angular data"""
-        l_u2 = self.__readFromRegister(self.__REG_R_OUT_X_L, 0xff)
+    def Get_RawOutX_Value(self):
+        """Raw X angular speed data"""
+        l = self.__readFromRegister(self.__REG_R_OUT_X_L, 0xff)
         h_u2 = self.__readFromRegister(self.__REG_R_OUT_X_H, 0xff)
-        l = bitOps.TwosComplementToByte(l_u2)
         h = bitOps.TwosComplementToByte(h_u2)
-        return h*256 + l
+        if (h < 0):
+            return (h*256 - l) * self.gain
+        elif (h >= 0):
+            return (h*256 + l) * self.gain
     
-    def Get_OutY_Value(self):
-        """Y angular data"""
-        l_u2 = self.__readFromRegister(self.__REG_R_OUT_Y_L, 0xff)
+    def Get_RawOutY_Value(self):
+        """Raw Y angular speed data"""
+        l = self.__readFromRegister(self.__REG_R_OUT_Y_L, 0xff)
         h_u2 = self.__readFromRegister(self.__REG_R_OUT_Y_H, 0xff)
-        l = bitOps.TwosComplementToByte(l_u2)
         h = bitOps.TwosComplementToByte(h_u2)
-        return h*256 + l
+        if (h < 0):
+            return (h*256 - l) * self.gain
+        elif (h >= 0):
+            return (h*256 + l) * self.gain
     
-    def Get_OutZ_Value(self):
-        """Z angular data"""
-        l_u2 = self.__readFromRegister(self.__REG_R_OUT_Z_L, 0xff)
+    def Get_RawOutZ_Value(self):
+        """Raw Z angular speed data"""
+        l = self.__readFromRegister(self.__REG_R_OUT_Z_L, 0xff)
         h_u2 = self.__readFromRegister(self.__REG_R_OUT_Z_H, 0xff)
-        l = bitOps.TwosComplementToByte(l_u2)
         h = bitOps.TwosComplementToByte(h_u2)
-        return h*256 + l
+        if (h < 0):
+            return (h*256 - l) * self.gain
+        elif (h >= 0):
+            return (h*256 + l) * self.gain
+
+    def Get_RawOut_Value(self):
+        """Raw [X, Y, Z] values of angular speed"""
+        return [self.Get_RawOutX_Value(), self.Get_RawOutY_Value(), self.Get_RawOutZ_Value()]
+        
+    def Get_CalOutX_Value(self):
+        """Calibrated X angular speed data"""
+        x = self.Get_RawOutX_Value()
+        if(x >= self.minX and x <= self.maxX):
+            return 0
+        else:
+            return x - self.meanX
+            
+    def Get_CalOutY_Value(self):
+        """Calibrated Y angular speed data"""
+        y = self.Get_RawOutY_Value()
+        if(y >= self.minY and y <= self.maxY):
+            return 0
+        else:
+            return y - self.meanY
+            
+    def Get_CalOutZ_Value(self):
+        """Calibrated Z angular speed data"""
+        z = self.Get_RawOutZ_Value()
+        if(z >= self.minZ and z <= self.maxZ):
+            return 0
+        else:
+            return z - self.meanZ
     
+    def Get_CalOut_Value(self):
+		"""Calibrated [X, Y, Z] value of angular speed, calibrated"""
+		return [self.Get_CalOutX_Value(), self.Get_CalOutY_Value(), self.Get_CalOutZ_Value()]
+		
+        
     def Set_FifoThreshold_Value(self, value):
         self.__writeToRegister(self.__REG_RW_FIFO_CTRL_REG, self.__MASK_FIFO_CTRL_REG_WTM, value) 
     def Get_FifoThreshold_Value(self):
@@ -685,5 +800,3 @@ class L3GD20(object):
     def Get_Int1Duration_Value(self):
         """Int 1 duration value"""
         return self.__readFromRegister(self.__REG_RW_INT1_DURATION, self.__MASK_INT1_DURATION_D)
-        
-        
