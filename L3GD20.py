@@ -319,15 +319,9 @@ class L3GD20(object):
             
             [ self.Get_Reference_Value.__doc__, self.Get_Reference_Value()],
             
-            [ self.Get_OutTemp_Value.__doc__, self.Get_OutTemp_Value()],
-            
             [ self.Get_AxisOverrun_Value.__doc__, self.Get_AxisOverrun_Value()],
             
             [ self.Get_AxisDataAvailable_Value.__doc__, self.Get_AxisDataAvailable_Value()],
-            
-            [ self.Get_OutX_Value.__doc__, self.Get_OutX_Value()],
-            [ self.Get_OutY_Value.__doc__, self.Get_OutY_Value()],
-            [ self.Get_OutZ_Value.__doc__, self.Get_OutZ_Value()],
             
             [ self.Get_FifoThreshold_Value.__doc__, self.Get_FifoThreshold_Value()],
             [ self.Get_FifoMode_Value.__doc__, self.Get_FifoMode_Value()],
