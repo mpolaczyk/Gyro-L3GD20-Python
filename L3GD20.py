@@ -249,7 +249,6 @@ class L3GD20(object):
             while self.Get_AxisDataAvailable_Value()[0] == 0:
                 time.sleep(0.0001)
             buff.append(self.Get_RawOutX_Value())
-        print(buff)
         self.meanX = numpy.mean(buff) 
         self.maxX = max(buff)
         self.minX = min(buff)
@@ -263,7 +262,6 @@ class L3GD20(object):
             while self.Get_AxisDataAvailable_Value()[1] == 0:
                 time.sleep(0.0001)
             buff.append(self.Get_RawOutY_Value())
-        print(buff)
         self.meanY = numpy.mean(buff) 
         self.maxY = max(buff)
         self.minY = min(buff)
@@ -277,7 +275,6 @@ class L3GD20(object):
             while self.Get_AxisDataAvailable_Value()[2] == 0:
                 time.sleep(0.0001)
             buff.append(self.Get_RawOutZ_Value())
-        print(buff)
         self.meanZ = numpy.mean(buff) 
         self.maxZ = max(buff)
         self.minZ = min(buff)
